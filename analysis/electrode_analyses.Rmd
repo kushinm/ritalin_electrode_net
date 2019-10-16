@@ -1,0 +1,117 @@
+---
+title: "Electrode analysis"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(glmnet)
+```
+
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+opts_knit$set(root.dir = "..")
+```
+
+Note on how data are structured in each csv:
+First 30 are non drug 
+Next 30 are drug 
+
+Alternate between left and right turning per row
+
+Please be sure to put the data files under the /data folder
+
+```{r}
+
+### Read in all the datafiles
+r1<-(read.csv('data/r1.csv', header = FALSE))
+r2<-(read.csv('data/r2.csv', header = FALSE))
+r3<-(read.csv('data/r3.csv', header = FALSE))
+r4<-(read.csv('data/r4.csv', header = FALSE))
+r5<-(read.csv('data/r5.csv', header = FALSE))
+r6<-(read.csv('data/r6.csv', header = FALSE))
+r7<-(read.csv('data/r7.csv', header = FALSE))
+r8<-(read.csv('data/r8.csv', header = FALSE))
+
+## Create two vectors for outcome variables based on how we know the data are structured
+drug_cond<-c(rep(0,30),rep(1,30))
+dir<- c(rep(c(0,1),30))
+y_colnames = c('drug_cond','dir')
+```
+
+
+```{r}
+### Function returns mean cross validated accuracy for glmnet models for each rat
+### So 8 rats * 6 cv splits* 2 accuracy scores (drug condition/direction)
+
+manual_cv<- function(df){
+running_acc_dg = {}
+running_acc_dir = {}
+for (i in 0:5) {
+  df=cbind(df,drug_cond,dir)
+  s=(10*i)+1
+  e=10*(i+1)
+  test_set = c(s:e)
+  fit_df = df[!(rownames(df)%in%test_set),]
+  test_df = df[test_set,]
+  fit_dg = fit_df[,'drug_cond']
+  fit_dir = fit_df[,'dir']
+  test_dg = test_df[,'drug_cond']
+  test_dir = test_df[,'dir']
+  data_cols = as.matrix(fit_df[,!(colnames(fit_df)%in%y_colnames)])
+  test_cols = as.matrix(test_df[,!(colnames(test_df)%in%y_colnames)])
+  model_dg <- cv.glmnet(data_cols,fit_dg)
+  model_dir <- cv.glmnet(data_cols,fit_dir)
+  pred_dg = predict.cv.glmnet(model_dg,test_cols,s = "lambda.min")
+  pred_dir = predict.cv.glmnet(model_dir,test_cols,s = "lambda.min")
+  dg_acc= 1-(sum(abs(test_dg-pred_dg))/100)
+  dir_acc = 1 - (sum(abs(test_dir-pred_dir))/100)
+  running_acc_dg= append(running_acc_dg, dg_acc)
+  running_acc_dir= append(running_acc_dir, dir_acc)
+}
+return_list = list(mean(running_acc_dg), mean(running_acc_dir))
+ return(return_list)
+}
+```
+
+
+```{r}
+### running the function on all our 
+all_rats<- list(r1,r2,r3,r4,r5,r6,r7,r8)
+j=0
+for(this_rat in all_rats){
+  j=j+1
+  this_rat[is.na(this_rat)] <- 0
+  mean_acc<-manual_cv(this_rat)
+  print(paste0("mean drug prediction accuracy for rat number ",j," is ",mean_acc[1]))
+  print(paste0("mean direction prediction accuracy for rat number ",j," is ",mean_acc[2]))
+  
+}
+
+```
+
+
+
+
+### Ignore for now
+
+
+```{r}
+x1=matrix(rnorm(100*20),100,20)
+nrow(r1.mat)
+y1=rnorm(100)
+fit1=glmnet(x1,y1)
+print(fit1)
+coef(fit1,s=0.01) # extract coefficients at a single value of lambda
+predict(fit1,newx=x1[1:10,],s=c(0.01,0.005)) # make predictions
+print(m0)
+plot(m0, label = T)
+coef(m0,s=0.100300)
+```
+```{r}
+data<-read.csv('alldat_1500.csv')
+
+```
+
+
