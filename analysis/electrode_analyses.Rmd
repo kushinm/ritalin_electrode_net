@@ -1,17 +1,19 @@
 ---
 title: "Electrode analysis"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
-
-```{r}
-library(tidyverse)
-library(glmnet)
-```
 
 
 ```{r setup, include=FALSE, echo=FALSE}
 require("knitr")
 opts_knit$set(root.dir = "..")
+```
+
+```{r}
+library(tidyverse)
+library(glmnet)
 ```
 
 Note on how data are structured in each csv:
@@ -69,6 +71,7 @@ for (i in 0:5) {
   dir_acc = 1 - (sum(abs(test_dir-pred_dir))/100)
   running_acc_dg= append(running_acc_dg, dg_acc)
   running_acc_dir= append(running_acc_dir, dir_acc)
+  plot(model_dg)
 }
 return_list = list(mean(running_acc_dg), mean(running_acc_dir))
  return(return_list)
@@ -95,23 +98,5 @@ for(this_rat in all_rats){
 
 
 ### Ignore for now
-
-
-```{r}
-x1=matrix(rnorm(100*20),100,20)
-nrow(r1.mat)
-y1=rnorm(100)
-fit1=glmnet(x1,y1)
-print(fit1)
-coef(fit1,s=0.01) # extract coefficients at a single value of lambda
-predict(fit1,newx=x1[1:10,],s=c(0.01,0.005)) # make predictions
-print(m0)
-plot(m0, label = T)
-coef(m0,s=0.100300)
-```
-```{r}
-data<-read.csv('alldat_1500.csv')
-
-```
 
 
