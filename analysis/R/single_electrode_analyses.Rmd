@@ -1,18 +1,22 @@
 ---
 title: "Electrode analysis"
+author: "Kushin Mukherjee"
 output:
   html_document:
     df_print: paged
 ---
 
 
-```{r setup, include=FALSE, echo=FALSE}
+```{r setup, include=TRUE, echo=FALSE}
 require("knitr")
-opts_knit$set(root.dir = "../..")
-getwd()
+knitr::opts_knit$set(root.dir = normalizePath("../..")) 
+
 ```
 
 ```{r}
+
+#Loading up libraries
+
 library(tidyverse)
 library(glmnet)
 library(data.table)
@@ -27,7 +31,6 @@ Alternate between left and right turning per row
 Please be sure to put the data files under the /data folder
 
 ```{r}
-
 ### Read in all the datafiles
 r1<-(read.csv('data/r1.csv', header = FALSE))
 r2<-(read.csv('data/r2.csv', header = FALSE))
@@ -37,43 +40,127 @@ r5<-(read.csv('data/r5.csv', header = FALSE))
 r6<-(read.csv('data/r6.csv', header = FALSE))
 r7<-(read.csv('data/r7.csv', header = FALSE))
 r8<-(read.csv('data/r8.csv', header = FALSE))
+test_rats<- list(r1)
 
 ## Create two vectors for outcome variables based on how we know the data are structured
-drug_cond<-c(rep(0,30),rep(1,30))
-dir<- c(rep(c(0,1),30))
-y_colnames = c('drug_cond','dir')
+drug_cond<-c(rep(0,30),rep(1,30)) ## Creating a vector of outcomes for drug condition
+
+dir<- c(rep(c(0,1),30)) ## Creating a vector of outcomes for direction
+y_colnames = c('drug_cond','dir') ## Column names 
+y_rand  =  c('rand_dcond','dir')
 ```
 
 
 ```{r}
-### Function returns mean cross validated accuracy for glmnet models for each rat
-### So 8 rats * 6 cv splits* 2 accuracy scores (drug condition/direction)
+### This function returns mean cross validated accuracy for glmnet models for each rat
+### So 8 rats * 10 cv splits* 2 accuracy scores (drug condition/direction)
+### NOTE: Ignore turn direction predictions for now
 
 manual_cv<- function(df){
-running_acc_dg = {}
+## empty lists for aggregating accuracy scores for drug condition and turn direction
+running_acc_dg = {} 
 running_acc_dir = {}
-for (i in 0:5) {
-  df=cbind(df,drug_cond,dir)
-  s=(10*i)+1
-  e=10*(i+1)
-  test_set = c(s:e)
-  fit_df = df[!(rownames(df)%in%test_set),]
-  test_df = df[test_set,]
-  fit_dg = fit_df[,'drug_cond']
-  fit_dir = fit_df[,'dir']
-  test_dg = test_df[,'drug_cond']
-  test_dir = test_df[,'dir']
-  data_cols = as.matrix(fit_df[,!(colnames(fit_df)%in%y_colnames)])
-  test_cols = as.matrix(test_df[,!(colnames(test_df)%in%y_colnames)])
-  model_dg <- cv.glmnet(data_cols,fit_dg)
-  model_dir <- cv.glmnet(data_cols,fit_dir)
-  pred_dg = predict.cv.glmnet(model_dg,test_cols,s = "lambda.min")
-  pred_dir = predict.cv.glmnet(model_dir,test_cols,s = "lambda.min")
-  dg_acc= 1-(sum(abs(test_dg-pred_dg))/100)
-  dir_acc = 1 - (sum(abs(test_dir-pred_dir))/100)
+## Concatenate electrode data with outcome variables
+df=cbind(df,drug_cond,dir)
+for (i in 0:9) {
+ 
+  s=(6*i)+1 ## Start index for subsetting test split
+  e=6*(i+1) ## End index for subsetting test split
+  test_set = c(s:e) 
+  
+  
+  fit_df = df[!(rownames(df)%in%test_set),] ## This is the train split 
+  test_df = df[test_set,]  ## This is the test split 
+  
+  fit_dg = as.factor(fit_df[,'drug_cond']) ## Drug condition outcome variables for train split
+  fit_dir = as.factor(fit_df[,'dir']) ## Turning direction outcome variables for train split
+  
+  test_dg = as.factor(test_df[,'drug_cond']) ## Drug condition outcome variables for test split
+  test_dir = as.factor(test_df[,'dir'])  ## Turning direction outcome variables for test split
+  
+  data_cols = as.matrix(fit_df[,!(colnames(fit_df)%in%y_colnames)]) ## predictor variables for train split 
+  data_cols[!is.finite(data_cols)] <- 0 ## Removing NAs
+  test_cols = as.matrix(test_df[,!(colnames(test_df)%in%y_colnames)]) ## predictor variables for test split
+  test_cols[!is.finite(test_cols)] <- 0 ## Removing NAs
+  
+  ## Since we're predicting categories we want to basically do logistic regression. So we use the binomial family in glmnet
+  
+  model_dg <- cv.glmnet(data_cols,fit_dg,family = "binomial") ## Fit model for drug condition
+  model_dir <- cv.glmnet(data_cols,fit_dir, family = "binomial") ## Fit model for turning direction
+  pred_dg = as.numeric(predict.cv.glmnet(model_dg,test_cols,s = "lambda.min", type= 'class')) ## Predict drug condition on holdout
+  pred_dir = as.numeric(predict.cv.glmnet(model_dir,test_cols,s = "lambda.min",type= 'class'))  ## Predict turning direction on holdout
+  
+  ## Compute accuracy on holdout: 1 minus the sum of the absolute value of the differences between predictions and true values divided by the number of values we predicted 
+  dg_acc= 1-(sum(abs(as.numeric(test_dg)-pred_dg))/length(pred_dg)) 
+  
+  ##just putting this here to catch weird errors
+  if (dg_acc<0){
+    print(pred_dg)
+    print(as.numeric(test_dg))
+  }
+  dir_acc = 1 - (sum(abs(as.numeric(test_dir)-pred_dir))/length(pred_dir))
+  
+  ## Append accuracy scores
   running_acc_dg= append(running_acc_dg, dg_acc)
   running_acc_dir= append(running_acc_dir, dir_acc)
-  plot(model_dg)
+  #plot(model_dg)
+}
+return_list = list(mean(running_acc_dg), mean(running_acc_dir))
+ return(return_list)
+}
+```
+
+
+
+
+
+
+```{r}
+### This function is almost the same as above except it computes cross validated accuracy for when the outcome labels for drug condition are permuted. Ignore turning direction for now
+
+## Note on how I'm implementing cross validation. I take the original outcome vector for drug condition and permute them. Now, for each train-test split I fit the electrode data on these permuted labels. For the hold out data, I get the model predictions and compare them to the *actual* outcome labels, *not* the scrambled outcomes corresponding to those data rows
+
+manual_cv_perm<- function(df){
+running_acc_dg = {}
+running_acc_dir = {}
+
+rand_dcond<- sample(drug_cond, length(drug_cond), replace = F) ## Creating a scrambled vector of outcomes for drug condition
+
+dft=cbind(df,drug_cond,dir)
+df=cbind(df,rand_dcond,dir)
+
+for (i in 0:9) {
+  
+  s=(6*i)+1
+  e=6*(i+1)
+  
+  test_set = c(s:e) 
+  fit_df = df[!(rownames(df)%in%test_set),]
+  
+  test_df = dft[test_set,]
+  fit_dg = as.factor(fit_df[,'rand_dcond'])
+  fit_dir = as.factor(fit_df[,'dir'])
+  
+  test_dg = as.factor(test_df[,'drug_cond'])
+  test_dir = as.factor(test_df[,'dir'])
+  
+  data_cols = as.matrix(fit_df[,!(colnames(fit_df)%in%y_rand)])
+  data_cols[!is.finite(data_cols)] <- 0
+  test_cols = as.matrix(test_df[,!(colnames(test_df)%in%y_colnames)])
+  test_cols[!is.finite(test_cols)] <- 0
+  
+  model_dg <- cv.glmnet(data_cols,fit_dg,family = "binomial")
+  model_dir <- cv.glmnet(data_cols,fit_dir, family = "binomial")
+  
+  pred_dg = as.numeric(predict.cv.glmnet(model_dg,test_cols,s = "lambda.min", type= 'class'))
+  pred_dir = as.numeric(predict.cv.glmnet(model_dir,test_cols,s = "lambda.min",type= 'class'))
+  
+  dg_acc= 1- (sum(abs(as.numeric(test_dg)-pred_dg))/length(pred_dg))
+  dir_acc = 1 - (sum(abs(as.numeric(test_dir)-pred_dir))/length(pred_dir))
+  
+  running_acc_dg= append(running_acc_dg, dg_acc)
+  running_acc_dir= append(running_acc_dir, dir_acc)
+  #plot(model_dg)
 }
 return_list = list(mean(running_acc_dg), mean(running_acc_dir))
  return(return_list)
@@ -82,7 +169,7 @@ return_list = list(mean(running_acc_dg), mean(running_acc_dir))
 
 
 ```{r}
-### running the function on all our rats
+### running the cross validation function on all our rats
 all_rats<- list(r1,r2,r3,r4,r5,r6,r7,r8)
 j=0
 for(this_rat in all_rats){
@@ -97,8 +184,20 @@ for(this_rat in all_rats){
 ```
 
 
+```{r}
+### running the permuted outcome cross-validated function on all our rats
+all_rats<- list(r1,r2,r3,r4,r5,r6,r7,r8)
+j=0
+for(this_rat in all_rats){
+  j=j+1
+  this_rat[is.na(this_rat)] <- 0
+  mean_acc<-manual_cv_perm(this_rat)
+  print(paste0("mean drug prediction accuracy for rat number ",j," is ",mean_acc[1]))
+  print(paste0("mean direction prediction accuracy for rat number ",j," is ",mean_acc[2]))
+  
+}
 
+```
 
-### Ignore for now
 
 

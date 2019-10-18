@@ -1,14 +1,46 @@
 ---
 title: "multielectrode analysis"
-output: html_notebook
+author: "Kushin Mukherjee"
+output:
+  html_document:
+    df_print: paged
 ---
+
+This is a notebook for analysis of the effects of Ritalin on the PFC and dmStriatum
+
+The electrode reading CSV files are quite large so I recommend using fread over read.csv
+
 ```{r setup, include=FALSE, echo=FALSE}
 require("knitr")
-opts_knit$set(root.dir = "..")
+knitr::opts_knit$set(root.dir = normalizePath("../..")) 
+
 ```
 
-```{r}
+```{r include=FALSE, echo=FALSE}
 library(tidyverse)
 library(glmnet)
 library(data.table)
+```
+
+
+```{r}
+### Read in all the datafiles
+num_electrodes<- fread('data/num_electrodes.csv')
+base<- fread('data/rat1base.csv')
+drug<- fread('data/rat1drug.csv')
+base_acc<-fread('data/rat1accbase.csv')
+drug_acc<-fread('data/rat1accdrug.csv')
+full_x<- data.matrix(rbind(base,drug))
+full_x[!is.finite(full_x)] <- 0
+full_y<-data.matrix(rbind(base_acc,drug_acc))
+full_y<- as.factor(full_y)
+full_y
+m<-cv.glmnet(full_x[1:50,],full_y[1:50], family = "binomial")
+plot(m)
+p<-predict.cv.glmnet(m,full_x[51:60,],type = "class")
+
+p
+## Create two vectors for outcome variables based on how we know the data are structured
+
+## y_colnames = c('drug_cond','dir')
 ```
