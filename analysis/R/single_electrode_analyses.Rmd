@@ -8,12 +8,14 @@ output:
 
 ```{r setup, include=FALSE, echo=FALSE}
 require("knitr")
-opts_knit$set(root.dir = "..")
+opts_knit$set(root.dir = "../..")
+getwd()
 ```
 
 ```{r}
 library(tidyverse)
 library(glmnet)
+library(data.table)
 ```
 
 Note on how data are structured in each csv:
@@ -80,7 +82,7 @@ return_list = list(mean(running_acc_dg), mean(running_acc_dir))
 
 
 ```{r}
-### running the function on all our 
+### running the function on all our rats
 all_rats<- list(r1,r2,r3,r4,r5,r6,r7,r8)
 j=0
 for(this_rat in all_rats){
