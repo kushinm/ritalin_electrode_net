@@ -14,7 +14,7 @@ Place the files in the `/data` directory
 - [ ] Tune elastic net parameter and see its effect on cross validated accuracy
 - [ ] Plot model coefficients from our best models for each rat 
 
-### Multiple Electrode Analysis
+### Multiple Electrode Analysis:
 - [ ] Tune elastic net parameter and see its effect on cross validated accuracy
 - [ ] Plot model coefficients from our best models for each rat 
 - [ ] For each rat fit models for 'time windows' for each electrode and repeat the above two steps.
