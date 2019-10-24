@@ -2,6 +2,11 @@
 
 Code and materials for electrode analysis of effects of Ritalin on dorsal medial PFC and Striatum
 
+## Data
+
+Download the electrode data from : https://uwmadison.box.com/s/cnof562um9q1lf7f8n6kpcmj40ep0u9k
+Place the files in the `/data` directory
+
 ## Analysis TODOs: 
 
 ### Single Electrode Analysis:
