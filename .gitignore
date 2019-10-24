@@ -40,3 +40,6 @@ rsconnect/
 
 # Ignore .mat files
 *.mat
+
+# Ignore Jupyter checkpoints
+*-checkpoint.ipynb
