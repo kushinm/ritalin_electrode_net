@@ -5,11 +5,11 @@ Code and materials for electrode analysis of effects of Ritalin on dorsal medial
 ## Analysis TODOs: 
 
 ### Single Electrode Analysis:
-- [] Tune elastic net parameter and see its effect on cross validated accuracy
-- [] Plot model coefficients from our best models for each rat 
+- [ ] Tune elastic net parameter and see its effect on cross validated accuracy
+- [ ] Plot model coefficients from our best models for each rat 
 
 ### Multiple Electrode Analysis
-- [] Tune elastic net parameter and see its effect on cross validated accuracy
-- [] Plot model coefficients from our best models for each rat 
-- [] For each rat fit models for 'time windows' for each electrode and repeat the above two steps.
-- [] Fold in dmSTR data
+- [ ] Tune elastic net parameter and see its effect on cross validated accuracy
+- [ ] Plot model coefficients from our best models for each rat 
+- [ ] For each rat fit models for 'time windows' for each electrode and repeat the above two steps.
+- [ ] Fold in dmSTR data
