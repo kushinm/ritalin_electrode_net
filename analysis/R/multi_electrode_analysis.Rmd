@@ -19,28 +19,153 @@ knitr::opts_knit$set(root.dir = normalizePath("../.."))
 ```{r include=FALSE, echo=FALSE}
 library(tidyverse)
 library(glmnet)
+library(glmnetUtils)
 library(data.table)
 ```
 
 
 ```{r}
-### Read in all the datafiles
-num_electrodes<- fread('data/num_electrodes.csv')
-base<- fread('data/rat1base.csv')
-drug<- fread('data/rat1drug.csv')
-base_acc<-fread('data/rat1accbase.csv')
-drug_acc<-fread('data/rat1accdrug.csv')
-full_x<- data.matrix(rbind(base,drug))
-full_x[!is.finite(full_x)] <- 0
-full_y<-data.matrix(rbind(base_acc,drug_acc))
-full_y<- as.factor(full_y)
-full_y
-m<-cv.glmnet(full_x[1:50,],full_y[1:50], family = "binomial")
-plot(m)
-p<-predict.cv.glmnet(m,full_x[51:60,],type = "class")
 
-p
-## Create two vectors for outcome variables based on how we know the data are structured
+trimNA<-function(x){
+  #This function removes columns with an NA value from the matrix
+  x <- as.matrix(x) #make sure it's a matrix
+  s <- c(1:dim(x)[2])[!is.na(colSums(x))] #Vector of columns without NA values
+  x[,s] #Return matrix with only those columns
+}
 
-## y_colnames = c('drug_cond','dir')
 ```
+
+
+```{r}
+T_CV<-function(x, y, pho = 0.1, a = 0, pflag = T){
+  #x = data matrix
+  #y = labels
+  #pho = proportion of items to hold out
+  #a = alpha (mixing proportion) for elastic net. 1 is lasso, 0 is ridge
+
+  
+  nipcl <- length(y)/2 #number of items per class
+  x <- x[order(y),]    #Sort data to make classes contiguous
+  y <- y[order(y)]     #Sort labels to make classes contiguous
+  
+  #below creates a "shuffled" vector used to select hold-outs with equal numbers
+  #of items held out from each class
+  s <- c(c(1:nipcl)[order(runif(nipcl))], c(1:nipcl)[order(runif(nipcl))])
+  nfolds <- floor(1/pho) #Compute number of folds as 1/proportion of holdouts
+  nhos <- pho * nipcl    #Number of held-out items per class
+  o <- rep(NA, times = nfolds)  #Vector to hold output
+  i1= 1
+  for(i1 in c(1:nfolds)){
+    tsmin <- (i1-1)*nhos + 1 #Minimum index for test-set in each fold
+    tsmax <- i1*nhos         #Maximum index for test-set in each fold
+
+    xtrn <- x[(s < tsmin) | (s > tsmax),] #Training set
+    ytrn <- y[(s < tsmin) | (s > tsmax)]  #Training labels
+    
+    xtst <- x[(s >= tsmin) & (s <= tsmax),]  #Testing set
+    ytst <- y[(s >= tsmin) & (s <= tsmax)]   #Testing labels
+    
+    #Fit the model
+    m <- cv.glmnet(xtrn, ytrn, family="binomial", alpha = a, type.measure = "class")
+    
+    if(pflag) plot(m) #Plot error curve if plot flag is true
+    
+    p <- predict(m, xtst, s= 'lambda.min', type= 'class') #Generate predictions of best model for test set
+    p <- as.numeric(p) #Convert to binary rep for comparison to true labels
+    o[i1] <- sum(p==ytst)/length(ytst)  #compute and store proportion correct for test set
+  }
+ return(list(o,mean(o))) #return vector of hold-out accuracy for each fold 
+
+}
+
+
+
+```
+
+```{r}
+### Read in all the datafiles
+num_rats<- 8
+num_electrodes<- fread('data/num_electrodes.csv')
+#base<- fread('data/rat7base.csv')
+#drug<- fread('data/rat7drug.csv')
+#base_acc<-fread('data/rat2accbase.csv')
+#drug_acc<-fread('data/rat2accdrug.csv')
+```
+
+```{r}
+calc_cv_acc<-function(a = 0, full_x,full_y){
+running_acc_dc ={}
+for (i in 0:9) {
+  s=(3*i)+1
+  e=3*(i+1)
+  
+  #test_set = c(s:e,(s+30):(e+30)) 
+  test_set = c(sample(c(1:30),3),sample(31:60,3))
+  
+  #fit_df = full_x[!(rownames(full_x)%in%test_set),]
+  #test_df = full_x[test_set,]
+  
+  fit_df = full_x[-(test_set),]
+  
+  test_df = full_x[test_set,]
+
+  
+  #fit_dc  = c(rep(0,27),rep(1,27))
+  #test_dc = c(rep(0,3),rep(1,3))
+  
+  fit_dc = full_y[-test_set]
+  test_dc =full_y[test_set]
+  
+  
+  data_cols = as.matrix(fit_df)
+  #data_cols[!is.finite(data_cols)] <- 0
+  test_cols = as.matrix(test_df)
+  #test_cols[!is.finite(test_cols)] <- 0
+  
+  model_dc <- cv.glmnet(data_cols,fit_dc,family = "binomial",type.measure = "class", alpha = a)
+  plot(model_dc)
+  #model_dir <- cv.glmnet(data_cols,fit_dir, family = "binomial")
+  
+  pred_dc = as.numeric(predict(model_dc,test_cols, s = "lambda.min", type= 'class'))
+  #pred_dir = as.numeric(predict.cv.glmnet(model_dir,test_cols,s = "lambda.min",type= 'class'))
+  
+  dc_acc= sum(pred_dc==test_dc)/length(test_dc)
+  #dir_acc = 1 - (sum(abs(as.numeric(test_dir)-pred_dir))/length(pred_dir))
+  
+  running_acc_dc= append(running_acc_dc, dc_acc)
+  #running_acc_dir= append(running_acc_dir, dir_acc)
+  #plot(model_dg)
+}
+mean_acc = mean(running_acc_dc)
+mean_acc
+return(list(mean_acc, running_acc_dc))
+}
+
+```
+
+```{r}
+all_results={}
+for (this_rat in 1:num_rats){
+base<-fread(paste0("data/rat",i,"base.csv"))
+drug<-fread(paste0("data/rat",i,"drug.csv"))
+full_x<- trimNA(rbind(base,drug))
+full_y<-c(rep(0,30),rep(1,30))
+this_data <- calc_cv_acc(full_x, full_y)
+append(all_results, this_data)
+}
+
+```
+
+
+```{r}
+#results<-T_CV(trimNA(rbind(base,drug)), c(rep(0,30),rep(1,30)))
+```
+
+```{r}
+results
+running_acc_dc
+mean_acc
+
+```
+
+

@@ -1733,7 +1733,7 @@ for (i in 0:9) {
   pred_dir = as.numeric(predict.cv.glmnet(model_dir,test_cols,s = &quot;lambda.min&quot;,type= 'class'))  ## Predict turning direction on holdout
   
   ## Compute accuracy on holdout: 1 minus the sum of the absolute value of the differences between predictions and true values divided by the number of values we predicted 
-  dg_acc= 1-(sum(abs(as.numeric(test_dg)-pred_dg))/length(pred_dg)) 
+  dg_acc= sum(as.numeric(test_dg)==pred_dg)/length(pred_dg)
   
   ##just putting this here to catch weird errors
   if (dg_acc&lt;0){
@@ -1751,6 +1751,8 @@ return_list = list(mean(running_acc_dg), mean(running_acc_dir))
  return(return_list)
 }</code></pre>
 <pre class="r"><code>### This function is almost the same as above except it computes cross validated accuracy for when the outcome labels for drug condition are permuted. Ignore turning direction for now
+
+## Note on how I'm implementing cross validation. I take the original outcome vector for drug condition and permute them. Now, for each train-test split I fit the electrode data on these permuted labels. For the hold out data, I get the model predictions and compare them to the *actual* outcome labels, *not* the scrambled outcomes corresponding to those data rows
 
 manual_cv_perm&lt;- function(df){
 running_acc_dg = {}
@@ -1787,7 +1789,7 @@ for (i in 0:9) {
   pred_dg = as.numeric(predict.cv.glmnet(model_dg,test_cols,s = &quot;lambda.min&quot;, type= 'class'))
   pred_dir = as.numeric(predict.cv.glmnet(model_dir,test_cols,s = &quot;lambda.min&quot;,type= 'class'))
   
-  dg_acc= 1- (sum(abs(as.numeric(test_dg)-pred_dg))/length(pred_dg))
+  dg_acc=  dg_acc= sum(as.numeric(test_dg)==pred_dg)/length(pred_dg)
   dir_acc = 1 - (sum(abs(as.numeric(test_dir)-pred_dir))/length(pred_dir))
   
   running_acc_dg= append(running_acc_dg, dg_acc)
@@ -1809,21 +1811,21 @@ for(this_rat in all_rats){
   
 }</code></pre>
 <pre><code>## [1] &quot;mean drug prediction accuracy for rat number 1 is 0.45&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 1 is 0.316666666666667&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 2 is 0.416666666666667&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 2 is 0.266666666666667&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 3 is 0.516666666666667&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 3 is 0.2&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 4 is 0.383333333333333&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 4 is 0.2&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 5 is 0.583333333333333&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 5 is 0.216666666666667&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 6 is 0.466666666666667&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 6 is 0.466666666666667&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 7 is 0.55&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 7 is 0.4&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 8 is 0.55&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 8 is 0.133333333333333&quot;</code></pre>
+## [1] &quot;mean direction prediction accuracy for rat number 1 is 0.166666666666667&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 2 is 0.533333333333333&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 2 is 0.35&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 3 is 0.5&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 3 is 0.266666666666667&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 4 is 0.4&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 4 is 0.283333333333333&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 5 is 0.483333333333333&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 5 is 0.266666666666667&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 6 is 0.65&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 6 is 0.5&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 7 is 0.516666666666667&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 7 is 0.333333333333333&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 8 is 0.516666666666667&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 8 is 0.216666666666667&quot;</code></pre>
 <pre class="r"><code>### running the permuted outcome cross-validated function on all our rats
 all_rats&lt;- list(r1,r2,r3,r4,r5,r6,r7,r8)
 j=0
@@ -1835,22 +1837,22 @@ for(this_rat in all_rats){
   print(paste0(&quot;mean direction prediction accuracy for rat number &quot;,j,&quot; is &quot;,mean_acc[2]))
   
 }</code></pre>
-<pre><code>## [1] &quot;mean drug prediction accuracy for rat number 1 is 0.633333333333333&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 1 is 0.116666666666667&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 2 is 0.683333333333333&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 2 is 0.25&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 3 is 0.716666666666667&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 3 is 0.216666666666667&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 4 is 0.533333333333333&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 4 is 0.216666666666667&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 5 is 0.5&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 5 is 0.183333333333333&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 6 is 0.666666666666667&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 6 is 0.433333333333333&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 7 is 0.516666666666667&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 7 is 0.216666666666667&quot;
-## [1] &quot;mean drug prediction accuracy for rat number 8 is 0.416666666666667&quot;
-## [1] &quot;mean direction prediction accuracy for rat number 8 is 0.0833333333333333&quot;</code></pre>
+<pre><code>## [1] &quot;mean drug prediction accuracy for rat number 1 is 0.516666666666667&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 1 is 0.183333333333333&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 2 is 0.433333333333333&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 2 is 0.35&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 3 is 0.7&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 3 is 0.233333333333333&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 4 is 0.516666666666667&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 4 is 0.283333333333333&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 5 is 0.666666666666667&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 5 is 0.116666666666667&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 6 is 0.5&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 6 is 0.483333333333333&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 7 is 0.7&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 7 is 0.183333333333333&quot;
+## [1] &quot;mean drug prediction accuracy for rat number 8 is 0.466666666666667&quot;
+## [1] &quot;mean direction prediction accuracy for rat number 8 is 0.166666666666667&quot;</code></pre>
 
 
 
